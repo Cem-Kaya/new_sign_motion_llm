@@ -1,0 +1,13 @@
+{
+  "run_root": "/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/runs/t08_s32_cd1024_cn1024_b32_ga1_soke20",
+  "checkpoint": "best.pt",
+  "output_dir": "/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/runs/t08_s32_cd1024_cn1024_b32_ga1_soke20/nb39_style_val_rgb_gt_outcome_no_skeleton_3_per_dataset",
+  "n_panels": 9,
+  "show_skeleton": false,
+  "face_step": 1,
+  "style_reference": "39_jointtoken_final_two_stage_rvq_gqa_refiner.ipynb",
+  "neural_sign_actors_panels": "Original RGB | SMPL-X GT | Outcome",
+  "other_panels": "SMPL-X GT | Outcome",
+  "elapsed_sec": 878.7653665542603,
+  "render_manifest": "/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/runs/t08_s32_cd1024_cn1024_b32_ga1_soke20/nb39_style_val_rgb_gt_outcome_no_skeleton_3_per_dataset/render_manifest.csv"
+}

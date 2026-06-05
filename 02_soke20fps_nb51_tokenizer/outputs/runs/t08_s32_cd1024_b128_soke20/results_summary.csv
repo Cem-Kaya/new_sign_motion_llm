@@ -1,0 +1,2 @@
+best_epoch,best_val_loss,stop_epoch,stop_val_loss,early_stopped,history_csv,best_ckpt
+47,3.6933414838085437,56,3.7317522682555735,False,/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20/history.csv,/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20/best.pt

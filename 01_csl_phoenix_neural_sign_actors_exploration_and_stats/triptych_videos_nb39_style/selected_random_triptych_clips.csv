@@ -1,0 +1,10 @@
+dataset,split,clip_id,pose_dir,pose_exists,frame_pkls,scan_limited,metadata_frames,gloss_tokens,text_tokens,signer
+CSL-Daily-Fittings,train,S001032_P0000_T00,/home/cem/tez/exp/DATA/SOKE_DATA/CSL-Daily-Fittings/csl-daily_pose/csl-daily_pose/S001032_P0000_T00,True,128,False,128.0,8.0,1.0,0.0
+CSL-Daily-Fittings,train,S004683_P0003_T00,/home/cem/tez/exp/DATA/SOKE_DATA/CSL-Daily-Fittings/csl-daily_pose/csl-daily_pose/S004683_P0003_T00,True,99,False,99.0,6.0,1.0,3.0
+CSL-Daily-Fittings,train,S006643_P0009_T00,/home/cem/tez/exp/DATA/SOKE_DATA/CSL-Daily-Fittings/csl-daily_pose/csl-daily_pose/S006643_P0009_T00,True,83,False,83.0,7.0,1.0,9.0
+Neural-Sign-Actors,train,20qFsdFD3io_24-8-rgb_front,/home/cem/tez/exp/DATA/SOKE_DATA/Neural-Sign-Actors/train_poses/poses/20qFsdFD3io_24-8-rgb_front,True,75,False,,,,
+Neural-Sign-Actors,train,5Uy3r6Sl4pM_1-8-rgb_front,/home/cem/tez/exp/DATA/SOKE_DATA/Neural-Sign-Actors/train_poses/poses/5Uy3r6Sl4pM_1-8-rgb_front,True,44,False,,,,
+Neural-Sign-Actors,train,CVpmdnJpOdE_3-5-rgb_front,/home/cem/tez/exp/DATA/SOKE_DATA/Neural-Sign-Actors/train_poses/poses/CVpmdnJpOdE_3-5-rgb_front,True,441,False,,,,
+PHOENIX,test,17February_2010_Wednesday_heute-1482,/home/cem/tez/exp/DATA/SOKE_DATA/phoenix_poses/test/17February_2010_Wednesday_heute-1482,True,134,False,,,,
+PHOENIX,train,09August_2009_Sunday_tagesschau-1185,/home/cem/tez/exp/DATA/SOKE_DATA/phoenix_poses/train/09August_2009_Sunday_tagesschau-1185,True,78,False,,,,
+PHOENIX,train,16May_2010_Sunday_tagesschau-5228,/home/cem/tez/exp/DATA/SOKE_DATA/phoenix_poses/train/16May_2010_Sunday_tagesschau-5228,True,204,False,,,,

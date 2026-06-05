@@ -1,0 +1,39 @@
+# Python/runtime noise
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Local process/log churn
+*.pid
+*.log
+nohup.out
+
+# Large generated caches. Keep summaries/manifests/plots/videos/checkpoints outside
+# these cache directories tracked as normal Git/LFS artifacts.
+cache/
+cache/**
+**/cache/
+**/cache/**
+**/*_cache/
+**/*_cache/**
+**/cache_*/
+**/cache_*/**
+**/cache_soke20/
+**/cache_soke20/**
+**/cache_soke20
+**/stage1_fullclip_recon_cache/
+**/stage1_fullclip_recon_cache/**
+**/stage1_fullclip_recon_cache
+
+# Local temp/scratch folders
+tmp/
+temp/
+.cache/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.tmp

@@ -1,0 +1,4 @@
+split,clips,signers,gloss_tokens_mean,gloss_tokens_median,gloss_tokens_p95,text_tokens_mean,text_tokens_median,sign_tokens_mean
+test,1176,10,7.654761904761905,7.0,12.0,1.0,1.0,1.0
+train,18401,10,7.266670289658171,7.0,12.0,1.0,1.0,1.0
+val,1077,10,7.588672237697307,7.0,12.0,1.0,1.0,1.0

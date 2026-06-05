@@ -1,0 +1,9 @@
+{
+  "best_epoch": 1,
+  "best_val_loss": 0.3726610690355301,
+  "stop_epoch": 1,
+  "stop_val_loss": 0.3726610690355301,
+  "best_ckpt": "new_data/03_soke20_nb51_stage2_refiner/outputs/runs/smoke_test/best.pt",
+  "last_ckpt": "new_data/03_soke20_nb51_stage2_refiner/outputs/runs/smoke_test/last.pt",
+  "history_csv": "new_data/03_soke20_nb51_stage2_refiner/outputs/runs/smoke_test/history.csv"
+}

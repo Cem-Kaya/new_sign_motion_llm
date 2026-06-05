@@ -1,0 +1,41 @@
+{
+  "metrics_csv": "/home/cem/tez/exp/new_data/03_soke20_nb51_stage2_refiner/outputs/runs/refiner_on_t08_s32_cd1024_cn1024_b32_ga1_soke20/eval_snapshots/best_epoch50_20260606_020728/val_stage1_vs_stage2_motion_metrics.csv",
+  "per_dataset": [
+    {
+      "dataset": "CSL-Daily-Fittings",
+      "n_clips": 748,
+      "stage1_mpjpe_mm_lower_better_mean": 22.65894918871874,
+      "stage1_pa_mpjpe_mm_lower_better_mean": 10.067526056844601,
+      "stage1_dtw_mpjpe_mm_lower_better_mean": 21.372199281496805,
+      "stage1_dtw_pa_mpjpe_mm_lower_better_mean": 10.008337081492682,
+      "stage2_mpjpe_mm_lower_better_mean": 21.734024456547782,
+      "stage2_pa_mpjpe_mm_lower_better_mean": 9.598465673725077,
+      "stage2_dtw_mpjpe_mm_lower_better_mean": 20.528972687736818,
+      "stage2_dtw_pa_mpjpe_mm_lower_better_mean": 9.524286571503428
+    },
+    {
+      "dataset": "Neural-Sign-Actors",
+      "n_clips": 1210,
+      "stage1_mpjpe_mm_lower_better_mean": 22.760223947496208,
+      "stage1_pa_mpjpe_mm_lower_better_mean": 10.300330442091651,
+      "stage1_dtw_mpjpe_mm_lower_better_mean": 22.17698961994251,
+      "stage1_dtw_pa_mpjpe_mm_lower_better_mean": 10.29504422436675,
+      "stage2_mpjpe_mm_lower_better_mean": 18.155336293414972,
+      "stage2_pa_mpjpe_mm_lower_better_mean": 7.459561562758278,
+      "stage2_dtw_mpjpe_mm_lower_better_mean": 17.577029105809576,
+      "stage2_dtw_pa_mpjpe_mm_lower_better_mean": 7.454386982261481
+    },
+    {
+      "dataset": "PHOENIX",
+      "n_clips": 368,
+      "stage1_mpjpe_mm_lower_better_mean": 22.439680793626316,
+      "stage1_pa_mpjpe_mm_lower_better_mean": 10.097871977410724,
+      "stage1_dtw_mpjpe_mm_lower_better_mean": 21.29610535261138,
+      "stage1_dtw_pa_mpjpe_mm_lower_better_mean": 10.07082155202183,
+      "stage2_mpjpe_mm_lower_better_mean": 21.4595988053707,
+      "stage2_pa_mpjpe_mm_lower_better_mean": 9.219867000153855,
+      "stage2_dtw_mpjpe_mm_lower_better_mean": 20.353319239612684,
+      "stage2_dtw_pa_mpjpe_mm_lower_better_mean": 9.183038454259801
+    }
+  ]
+}
