@@ -299,34 +299,90 @@ def summarize_by_dataset(out_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values(["dataset", "source_alias"]).reset_index(drop=True)
 
 
+def build_summary_display_table(summary_df: pd.DataFrame) -> pd.DataFrame:
+    columns = [
+        ("dataset", "Dataset"),
+        ("source_alias", "Alias"),
+        ("n_clips", "Clips"),
+        ("frames_mean", "Mean frames"),
+        ("mpjpe_mm_lower_better_mean", "MPJPE mean mm ↓"),
+        ("mpjpe_mm_lower_better_median", "MPJPE median mm ↓"),
+        ("pa_mpjpe_mm_lower_better_mean", "PA-MPJPE mean mm ↓"),
+        ("pa_mpjpe_mm_lower_better_median", "PA-MPJPE median mm ↓"),
+        ("dtw_mpjpe_mm_lower_better_mean", "DTW-MPJPE mean mm ↓"),
+        ("dtw_pa_mpjpe_mm_lower_better_mean", "DTW-PA-MPJPE mean mm ↓"),
+    ]
+    present = [(src, dst) for src, dst in columns if src in summary_df.columns]
+    out = summary_df[[src for src, _ in present]].copy()
+    out.columns = [dst for _, dst in present]
+    return out
+
+
+def write_summary_table(summary_table_df: pd.DataFrame, table_png_path: Path) -> None:
+    if summary_table_df.empty:
+        return
+    display_df = summary_table_df.copy()
+    for col in display_df.columns:
+        if pd.api.types.is_float_dtype(display_df[col]):
+            display_df[col] = display_df[col].map(lambda x: "" if pd.isna(x) else f"{float(x):.3f}")
+        elif pd.api.types.is_integer_dtype(display_df[col]):
+            display_df[col] = display_df[col].map(lambda x: "" if pd.isna(x) else str(int(x)))
+        else:
+            display_df[col] = display_df[col].astype(str)
+
+    col_labels = [c.replace(" ", "\n").replace("↓", "↓") for c in display_df.columns]
+    fig_width = max(13.0, 1.25 * len(display_df.columns))
+    fig_height = max(3.2, 0.55 * len(display_df) + 1.6)
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    ax.axis("off")
+    ax.set_title("Per-Dataset Validation Motion Metrics Table (lower better)", fontsize=15, fontweight="bold", pad=14)
+    table = ax.table(
+        cellText=display_df.values,
+        colLabels=col_labels,
+        loc="center",
+        cellLoc="center",
+        colLoc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(8.6)
+    table.scale(1.0, 1.6)
+
+    n_rows, n_cols = display_df.shape
+    for (row_idx, col_idx), cell in table.get_celld().items():
+        cell.set_edgecolor("#334155")
+        cell.set_linewidth(0.8)
+        if row_idx == 0:
+            cell.set_facecolor("#e8edf3")
+            cell.set_text_props(weight="bold", color="#111827")
+            cell.set_height(cell.get_height() * 1.45)
+        elif row_idx % 2 == 0:
+            cell.set_facecolor("#f8fafc")
+        else:
+            cell.set_facecolor("#ffffff")
+        if col_idx < n_cols and display_df.columns[col_idx] in {"Dataset", "Alias"}:
+            cell.set_text_props(ha="left")
+            cell.set_width(0.14 if display_df.columns[col_idx] == "Dataset" else 0.08)
+        else:
+            cell.set_width(0.09)
+
+    fig.text(
+        0.01,
+        0.03,
+        "CSV companion contains the same compact table; detailed mean/median/p90 summary remains in the regular summary CSV.",
+        fontsize=8.5,
+        color="#475569",
+    )
+    fig.tight_layout(rect=[0, 0.06, 1, 0.94])
+    table_png_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(table_png_path, dpi=180, bbox_inches="tight")
+    plt.close(fig)
+
+
 def write_summary_plot(summary_df: pd.DataFrame, plot_path: Path) -> None:
+    # Backward-compatible wrapper: this path is now a table PNG, not a graph.
     if summary_df.empty:
         return
-    metrics = [
-        ("mpjpe_mm_lower_better_mean", "MPJPE mm (lower better)"),
-        ("pa_mpjpe_mm_lower_better_mean", "PA-MPJPE mm (lower better)"),
-        ("dtw_mpjpe_mm_lower_better_mean", "DTW-MPJPE mm (lower better)"),
-        ("dtw_pa_mpjpe_mm_lower_better_mean", "DTW-PA-MPJPE mm (lower better)"),
-    ]
-    metrics = [(col, label) for col, label in metrics if col in summary_df.columns]
-    if not metrics:
-        return
-    labels = [str(x) for x in summary_df["dataset"]]
-    x = np.arange(len(labels), dtype=np.float32)
-    width = 0.8 / max(1, len(metrics))
-    fig, ax = plt.subplots(figsize=(12, 6))
-    for idx, (col, label) in enumerate(metrics):
-        ax.bar(x + (idx - (len(metrics) - 1) / 2) * width, summary_df[col].astype(float), width, label=label)
-    ax.set_title("Per-Dataset Validation Motion Metrics (lower better)")
-    ax.set_ylabel("Millimeters")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=15, ha="right")
-    ax.grid(True, axis="y", alpha=0.3)
-    ax.legend()
-    fig.tight_layout()
-    plot_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(plot_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
+    write_summary_table(build_summary_display_table(summary_df), plot_path)
 
 
 def parse_args() -> argparse.Namespace:
@@ -374,6 +430,7 @@ def main() -> None:
         suffix += f"_limit{args.max_clips_per_dataset}"
     out_csv = args.run_root / f"{suffix}_metrics.csv"
     summary_csv = args.run_root / f"{suffix}_summary.csv"
+    summary_table_csv = args.run_root / f"{suffix}_summary_table.csv"
     summary_json = args.run_root / f"{suffix}_summary.json"
     plot_path = args.run_root / "plots" / f"{suffix}_summary.png"
 
@@ -468,6 +525,8 @@ def main() -> None:
     out_df.to_csv(out_csv, index=False)
     summary_df = summarize_by_dataset(out_df)
     summary_df.to_csv(summary_csv, index=False)
+    summary_table_df = build_summary_display_table(summary_df)
+    summary_table_df.to_csv(summary_table_csv, index=False)
     write_summary_plot(summary_df, plot_path)
 
     payload = {
@@ -480,13 +539,18 @@ def main() -> None:
         "compute_dtw_pa": bool(args.compute_dtw_pa),
         "metrics_csv": str(out_csv),
         "summary_csv": str(summary_csv),
+        "summary_table_csv": str(summary_table_csv),
+        "summary_table_png": str(plot_path),
         "plot_path": str(plot_path),
+        "plot_path_note": "This path is a matplotlib table PNG, not a graph.",
         "per_dataset": summary_df.to_dict("records"),
     }
     summary_json.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print("Wrote:", out_csv)
     print("Wrote:", summary_csv)
+    print("Wrote:", summary_table_csv)
     print("Wrote:", summary_json)
+    print("Wrote:", plot_path)
     print(summary_df.to_string(index=False))
 
 

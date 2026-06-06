@@ -1,5 +1,5 @@
 {
-  "run_root": "/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20",
+  "run_root": "/home/cem/tez/exp/new_data/02_soke20fps_VQVAE_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20",
   "preprocess_root": "/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/preprocess_soke20",
   "split": "val",
   "checkpoint": "best.pt",
@@ -7,8 +7,8 @@
   "max_clips_per_dataset": 0,
   "compute_dtw_pa": true,
   "metrics_csv": "/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20/val_fullclip_per_dataset_motion_metrics.csv",
-  "summary_csv": "/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20/val_fullclip_per_dataset_motion_summary.csv",
-  "plot_path": "/home/cem/tez/exp/new_data/02_soke20fps_nb51_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20/plots/val_fullclip_per_dataset_motion_summary.png",
+  "summary_csv": "/home/cem/tez/exp/new_data/02_soke20fps_VQVAE_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20/val_fullclip_per_dataset_motion_summary.csv",
+  "plot_path": "/home/cem/tez/exp/new_data/02_soke20fps_VQVAE_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20/plots/val_fullclip_per_dataset_motion_summary.png",
   "per_dataset": [
     {
       "dataset": "CSL-Daily-Fittings",
@@ -73,5 +73,8 @@
       "dtw_pa_mpjpe_mm_lower_better_median": 11.811179133282653,
       "dtw_pa_mpjpe_mm_lower_better_p90": 14.828652202823715
     }
-  ]
+  ],
+  "summary_table_csv": "/home/cem/tez/exp/new_data/02_soke20fps_VQVAE_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20/val_fullclip_per_dataset_motion_summary_table.csv",
+  "summary_table_png": "/home/cem/tez/exp/new_data/02_soke20fps_VQVAE_tokenizer/outputs/runs/t08_s32_cd1024_b128_soke20/plots/val_fullclip_per_dataset_motion_summary.png",
+  "plot_path_note": "This path is a matplotlib table PNG, not a graph."
 }
