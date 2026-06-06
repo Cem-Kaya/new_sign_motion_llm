@@ -270,6 +270,11 @@ def pa_cost_matrix_blocked_torch(
         trans = mu_y - scale[:, None] * muxr
         aligned = scale[:, None, None] * xr + trans[:, None, :]
         cost = torch.linalg.norm(aligned - y, dim=-1).mean(dim=1)
+        raw_cost = torch.linalg.norm(x - y, dim=-1).mean(dim=1)
+        cost = torch.minimum(cost, raw_cost)
+        degenerate = var_x <= 1e-12
+        if torch.any(degenerate):
+            cost[degenerate] = raw_cost[degenerate]
         costs[start:end] = cost.reshape(b, m).detach().cpu().numpy()
     return costs
 
