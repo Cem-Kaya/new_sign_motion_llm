@@ -244,36 +244,58 @@ def check_torchao_compatibility() -> dict[str, Any]:
     return {"torchao_version": torchao_version, "torchao_status": "ok"}
 
 
+def flash_attention_2_probe(device: torch.device) -> dict[str, Any]:
+    status: dict[str, Any] = {
+        "flash_attn_2_available": False,
+        "flash_attn_version": "",
+        "flash_attn_2_reason": "",
+    }
+    if device.type != "cuda":
+        status["flash_attn_2_reason"] = "cuda_unavailable"
+        return status
+    try:
+        status["flash_attn_version"] = importlib_metadata.version("flash_attn")
+    except importlib_metadata.PackageNotFoundError:
+        status["flash_attn_2_reason"] = "flash_attn_not_installed"
+        return status
+    try:
+        from transformers.utils import is_flash_attn_2_available
+
+        status["flash_attn_2_available"] = bool(is_flash_attn_2_available())
+        if not status["flash_attn_2_available"]:
+            status["flash_attn_2_reason"] = "transformers_reports_unavailable"
+    except Exception as exc:
+        status["flash_attn_2_available"] = True
+        status["flash_attn_2_reason"] = f"transformers_probe_failed_assuming_available:{type(exc).__name__}"
+    return status
+
+
 def configure_attention_backend(args: argparse.Namespace, device: torch.device) -> dict[str, Any]:
+    requested_attn_impl = str(getattr(args, "attn_implementation", ""))
+    probe = flash_attention_2_probe(device)
+    if requested_attn_impl == "auto":
+        args.attn_implementation = "flash_attention_2" if probe["flash_attn_2_available"] else "sdpa"
+
     attn_impl = str(getattr(args, "attn_implementation", ""))
     requested = str(getattr(args, "sdpa_kernel", "auto"))
     status: dict[str, Any] = {
+        "attn_implementation_requested": requested_attn_impl,
         "attn_implementation": attn_impl,
         "sdpa_kernel": requested,
         "flash_sdp_enabled": None,
         "mem_efficient_sdp_enabled": None,
         "math_sdp_enabled": None,
-        "flash_attn_2_available": None,
-        "flash_attn_version": "",
+        **probe,
     }
     if attn_impl == "flash_attention_2":
         if device.type != "cuda":
             raise RuntimeError('attn_implementation="flash_attention_2" requires CUDA')
-        try:
-            flash_attn_version = importlib_metadata.version("flash_attn")
-        except importlib_metadata.PackageNotFoundError as exc:
+        if not status["flash_attn_version"]:
             raise RuntimeError(
                 'Missing flash-attn for attn_implementation="flash_attention_2". '
                 "Install it with: pip install -U flash-attn --no-build-isolation"
-            ) from exc
-        status["flash_attn_version"] = flash_attn_version
-        try:
-            from transformers.utils import is_flash_attn_2_available
-
-            status["flash_attn_2_available"] = bool(is_flash_attn_2_available())
-        except Exception:
-            status["flash_attn_2_available"] = True
-        if status["flash_attn_2_available"] is False:
+            )
+        if not status["flash_attn_2_available"]:
             raise RuntimeError(
                 'Transformers reports FlashAttention-2 is unavailable. '
                 "Check CUDA, torch, and flash-attn installation."
@@ -314,6 +336,39 @@ def configure_attention_backend(args: argparse.Namespace, device: torch.device) 
             if callable(fn):
                 status[key] = bool(fn())
     return status
+
+
+def configure_torch_runtime(args: argparse.Namespace, device: torch.device) -> dict[str, Any]:
+    use_tf32 = bool(args.tf32) and device.type == "cuda"
+    if device.type == "cuda":
+        torch.backends.cuda.matmul.allow_tf32 = use_tf32
+        torch.backends.cudnn.allow_tf32 = use_tf32
+        if use_tf32 and hasattr(torch, "set_float32_matmul_precision"):
+            torch.set_float32_matmul_precision("high")
+    return {
+        "tf32": bool(use_tf32),
+        "cuda_matmul_allow_tf32": bool(torch.backends.cuda.matmul.allow_tf32) if device.type == "cuda" else False,
+        "cudnn_allow_tf32": bool(torch.backends.cudnn.allow_tf32) if device.type == "cuda" else False,
+    }
+
+
+def data_loader_kwargs(args: argparse.Namespace, *, shuffle: bool, collate: Any) -> dict[str, Any]:
+    num_workers = int(args.num_workers)
+    kwargs: dict[str, Any] = {
+        "batch_size": int(args.batch_size),
+        "shuffle": bool(shuffle),
+        "num_workers": num_workers,
+        "collate_fn": collate,
+        "pin_memory": bool(args.pin_memory),
+    }
+    if num_workers > 0:
+        kwargs["persistent_workers"] = bool(args.persistent_workers)
+        kwargs["prefetch_factor"] = max(1, int(args.prefetch_factor))
+    return kwargs
+
+
+def unwrap_compiled_model(model: torch.nn.Module) -> torch.nn.Module:
+    return getattr(model, "_orig_mod", model)
 
 
 def motion_only_text(text: str) -> str:
@@ -620,15 +675,16 @@ def optimizer_lrs(optimizer: torch.optim.Optimizer) -> dict[str, float]:
 @torch.no_grad()
 def evaluate(model: torch.nn.Module, loader: DataLoader, device: torch.device, max_batches: int = 0) -> dict[str, float]:
     model.eval()
+    non_blocking = bool(getattr(loader, "pin_memory", False))
     loss_sum = 0.0
     n_batches = 0
     correct = 0
     total = 0
     for batch in loader:
-        labels = batch["labels"].to(device)
+        labels = batch["labels"].to(device, non_blocking=non_blocking)
         out = model(
-            input_ids=batch["input_ids"].to(device),
-            attention_mask=batch["attention_mask"].to(device),
+            input_ids=batch["input_ids"].to(device, non_blocking=non_blocking),
+            attention_mask=batch["attention_mask"].to(device, non_blocking=non_blocking),
             labels=labels,
         )
         loss_sum += float(out.loss.detach().cpu())
@@ -679,7 +735,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--motion-val-fraction", type=float, default=0.10)
     parser.add_argument("--motion-val-max-rows", type=int, default=256)
     parser.add_argument("--motion-val-max-new-tokens", type=int, default=384)
-    parser.add_argument("--num-workers", type=int, default=2)
+    parser.add_argument("--num-workers", type=int, default=8)
+    parser.add_argument("--pin-memory", type=int, default=1)
+    parser.add_argument("--persistent-workers", type=int, default=1)
+    parser.add_argument("--prefetch-factor", type=int, default=4)
+    parser.add_argument("--tf32", type=int, default=1)
+    parser.add_argument("--torch-compile", type=int, default=0)
+    parser.add_argument("--torch-compile-mode", default="reduce-overhead")
+    parser.add_argument("--torch-compile-fullgraph", type=int, default=0)
+    parser.add_argument("--torch-compile-dynamic", type=int, default=1)
     parser.add_argument("--dtype", choices=["bf16", "fp16", "fp32"], default="bf16")
     parser.add_argument("--lora-r", type=int, default=64)
     parser.add_argument("--lora-alpha", type=int, default=128)
@@ -710,7 +774,9 @@ def main() -> None:
         args.init_adapter = Path(resume_info["adapter"])
     (args.run_root / "train_args.json").write_text(json.dumps(vars(args), indent=2, default=str), encoding="utf-8")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    runtime_status = configure_torch_runtime(args, device)
     attention_status = configure_attention_backend(args, device)
+    (args.run_root / "train_args.json").write_text(json.dumps(vars(args), indent=2, default=str), encoding="utf-8")
     preflight = {
         "device": str(device),
         "cuda_available": bool(torch.cuda.is_available()),
@@ -722,8 +788,15 @@ def main() -> None:
         "grad_accum": int(args.grad_accum),
         "virtual_batch_size": int(args.batch_size) * int(args.grad_accum),
         "max_seq_len": int(args.max_seq_len),
+        "num_workers": int(args.num_workers),
+        "pin_memory": bool(args.pin_memory),
+        "persistent_workers": bool(args.persistent_workers) if int(args.num_workers) > 0 else False,
+        "prefetch_factor": int(args.prefetch_factor) if int(args.num_workers) > 0 else None,
+        "torch_compile": bool(args.torch_compile),
+        "torch_compile_mode": str(args.torch_compile_mode),
         "gradient_checkpointing": bool(args.gradient_checkpointing),
         "attn_implementation": str(args.attn_implementation),
+        **runtime_status,
         **attention_status,
         "resume_training": bool(args.resume_training),
         "resume_found": bool(resume_info is not None),
@@ -770,11 +843,18 @@ def main() -> None:
         seed=args.seed + 100000,
     )
     collate = lambda batch: collate_examples(batch, tokenizer, args.max_seq_len)
-    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, collate_fn=collate)
-    val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, collate_fn=collate)
+    train_loader = DataLoader(train_ds, **data_loader_kwargs(args, shuffle=True, collate=collate))
+    val_loader = DataLoader(val_ds, **data_loader_kwargs(args, shuffle=False, collate=collate))
 
     model.to(device)
     optimizer, optimizer_meta = build_optimizer(args, model)
+    if bool(args.torch_compile):
+        model = torch.compile(
+            model,
+            mode=str(args.torch_compile_mode),
+            fullgraph=bool(args.torch_compile_fullgraph),
+            dynamic=bool(args.torch_compile_dynamic),
+        )
     (args.run_root / "optimizer_param_groups.json").write_text(json.dumps(optimizer_meta, indent=2, ensure_ascii=False), encoding="utf-8")
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max(1, args.epochs), eta_min=args.eta_min)
     scaler = torch.cuda.amp.GradScaler(enabled=(device.type == "cuda" and args.dtype == "fp16"))
@@ -861,10 +941,15 @@ def main() -> None:
         loss_sum = 0.0
         n_examples = 0
         optimizer.zero_grad(set_to_none=True)
+        non_blocking = bool(args.pin_memory)
         for micro_idx, batch in enumerate(train_loader, start=1):
-            labels = batch["labels"].to(device)
+            labels = batch["labels"].to(device, non_blocking=non_blocking)
             with torch.autocast(device_type="cuda", dtype=amp_dtype, enabled=use_amp):
-                out = model(input_ids=batch["input_ids"].to(device), attention_mask=batch["attention_mask"].to(device), labels=labels)
+                out = model(
+                    input_ids=batch["input_ids"].to(device, non_blocking=non_blocking),
+                    attention_mask=batch["attention_mask"].to(device, non_blocking=non_blocking),
+                    labels=labels,
+                )
                 loss = out.loss / max(1, int(args.grad_accum))
             if scaler.is_enabled():
                 scaler.scale(loss).backward()
@@ -942,14 +1027,15 @@ def main() -> None:
         scheduler.step()
 
         last_dir = args.run_root / "last_adapter"
-        model.save_pretrained(last_dir)
+        model_to_save = unwrap_compiled_model(model)
+        model_to_save.save_pretrained(last_dir)
         tokenizer.save_pretrained(last_dir)
         torch.save({"epoch": epoch, "global_step": global_step, "optimizer": optimizer.state_dict(), "scheduler": scheduler.state_dict()}, args.run_root / "last_train_state.pt")
         if math.isfinite(float(val["loss"])) and val["loss"] < best_loss:
             best_loss = val["loss"]
             best_epoch = epoch
             best_dir = args.run_root / "best_adapter"
-            model.save_pretrained(best_dir)
+            model_to_save.save_pretrained(best_dir)
             tokenizer.save_pretrained(best_dir)
             torch.save({"epoch": epoch, "global_step": global_step, "best_loss": best_loss, "best_epoch": best_epoch}, args.run_root / "best_train_state.pt")
         write_event("epoch_end", row)
