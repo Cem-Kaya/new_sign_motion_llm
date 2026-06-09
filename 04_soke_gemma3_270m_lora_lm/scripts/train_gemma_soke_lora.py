@@ -244,14 +244,45 @@ def check_torchao_compatibility() -> dict[str, Any]:
     return {"torchao_version": torchao_version, "torchao_status": "ok"}
 
 
-def configure_sdpa_kernel(args: argparse.Namespace, device: torch.device) -> dict[str, Any]:
+def configure_attention_backend(args: argparse.Namespace, device: torch.device) -> dict[str, Any]:
+    attn_impl = str(getattr(args, "attn_implementation", ""))
     requested = str(getattr(args, "sdpa_kernel", "auto"))
     status: dict[str, Any] = {
+        "attn_implementation": attn_impl,
         "sdpa_kernel": requested,
         "flash_sdp_enabled": None,
         "mem_efficient_sdp_enabled": None,
         "math_sdp_enabled": None,
+        "flash_attn_2_available": None,
+        "flash_attn_version": "",
     }
+    if attn_impl == "flash_attention_2":
+        if device.type != "cuda":
+            raise RuntimeError('attn_implementation="flash_attention_2" requires CUDA')
+        try:
+            flash_attn_version = importlib_metadata.version("flash_attn")
+        except importlib_metadata.PackageNotFoundError as exc:
+            raise RuntimeError(
+                'Missing flash-attn for attn_implementation="flash_attention_2". '
+                "Install it with: pip install -U flash-attn --no-build-isolation"
+            ) from exc
+        status["flash_attn_version"] = flash_attn_version
+        try:
+            from transformers.utils import is_flash_attn_2_available
+
+            status["flash_attn_2_available"] = bool(is_flash_attn_2_available())
+        except Exception:
+            status["flash_attn_2_available"] = True
+        if status["flash_attn_2_available"] is False:
+            raise RuntimeError(
+                'Transformers reports FlashAttention-2 is unavailable. '
+                "Check CUDA, torch, and flash-attn installation."
+            )
+        return status
+
+    if attn_impl != "sdpa":
+        return status
+
     if requested == "auto":
         pass
     elif device.type != "cuda":
@@ -679,7 +710,7 @@ def main() -> None:
         args.init_adapter = Path(resume_info["adapter"])
     (args.run_root / "train_args.json").write_text(json.dumps(vars(args), indent=2, default=str), encoding="utf-8")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    sdpa_status = configure_sdpa_kernel(args, device)
+    attention_status = configure_attention_backend(args, device)
     preflight = {
         "device": str(device),
         "cuda_available": bool(torch.cuda.is_available()),
@@ -693,7 +724,7 @@ def main() -> None:
         "max_seq_len": int(args.max_seq_len),
         "gradient_checkpointing": bool(args.gradient_checkpointing),
         "attn_implementation": str(args.attn_implementation),
-        **sdpa_status,
+        **attention_status,
         "resume_training": bool(args.resume_training),
         "resume_found": bool(resume_info is not None),
         "resume_epoch": int(resume_info["epoch"]) if resume_info is not None else 0,
