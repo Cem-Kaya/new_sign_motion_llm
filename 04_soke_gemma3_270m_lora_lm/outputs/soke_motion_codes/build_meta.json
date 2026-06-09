@@ -1,0 +1,166 @@
+{
+  "time_utc": "2026-06-07T13:59:33Z",
+  "model_meta": {
+    "checkpoint": "/home/cem/tez/exp/ref/SOKE/experiments/mgpt/vae/checkpoints/tokenizer.ckpt",
+    "epoch": 409,
+    "global_step": 14760,
+    "mapped_tensor_count": 201,
+    "model_cfg": {
+      "name": "official_soke_paper_vqvae",
+      "quantizer": "ema_reset",
+      "code_dim": 512,
+      "output_emb_width": 512,
+      "down_t": 2,
+      "stride_t": 2,
+      "width": 512,
+      "depth": 3,
+      "dilation_growth_rate": 3,
+      "activation": "relu",
+      "code_num_body": 96,
+      "code_num_lhand": 192,
+      "code_num_rhand": 192
+    }
+  },
+  "norm_source": "ref/data/CSL-Daily/mean.pt + std.pt sliced to SOKE 133D",
+  "codecs": {
+    "body_size": 96,
+    "lhand_size": 192,
+    "rhand_size": 192
+  },
+  "text_sources": [
+    {
+      "path": "/home/cem/tez/exp/artifacts/59_tokenizer_soke_nb51_nb57_metric_table/pkl_to_rgb_front_index.csv",
+      "kind": "how2sign_csv",
+      "rows_seen": 30596,
+      "new_keys": 91788
+    },
+    {
+      "path": "/home/cem/tez/exp/artifacts/17_how2sign_rgb_smplx_triptych/pkl_to_rgb_front_index.csv",
+      "kind": "how2sign_csv",
+      "rows_seen": 30596,
+      "new_keys": 0
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/how2sign_original/How2Sign/sentence_level/train/text/en/raw_text/how2sign_train.csv",
+      "kind": "how2sign_raw_text_csv",
+      "rows_seen": 31165,
+      "new_keys": 1707
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/how2sign_original/How2Sign/sentence_level/train/text/en/raw_text/re_aligned/how2sign_realigned_train.csv",
+      "kind": "how2sign_raw_text_csv",
+      "rows_seen": 31165,
+      "new_keys": 0
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/how2sign_original/How2Sign/sentence_level/val/text/en/raw_text/how2sign_val.csv",
+      "kind": "how2sign_raw_text_csv",
+      "rows_seen": 1741,
+      "new_keys": 5223
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/how2sign_original/How2Sign/sentence_level/val/text/en/raw_text/re_aligned/how2sign_realigned_val.csv",
+      "kind": "how2sign_raw_text_csv",
+      "rows_seen": 1741,
+      "new_keys": 0
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/how2sign_original/How2Sign/sentence_level/test/text/en/raw_text/how2sign_test.csv",
+      "kind": "how2sign_raw_text_csv",
+      "rows_seen": 2357,
+      "new_keys": 7071
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/how2sign_original/How2Sign/sentence_level/test/text/en/raw_text/re_aligned/how2sign_realigned_test.csv",
+      "kind": "how2sign_raw_text_csv",
+      "rows_seen": 2357,
+      "new_keys": 0
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/SOKE_DATA/CSL-Daily-Fittings/csl_clean.train",
+      "kind": "csl_pickle",
+      "rows_seen": 18401,
+      "new_keys": 18401
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/SOKE_DATA/CSL-Daily-Fittings/csl_clean.val",
+      "kind": "csl_pickle",
+      "rows_seen": 1077,
+      "new_keys": 1077
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/SOKE_DATA/CSL-Daily-Fittings/csl_clean.test",
+      "kind": "csl_pickle",
+      "rows_seen": 1176,
+      "new_keys": 1176
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/SOKE_DATA/Phoenix_2014T/phoenix14t.train",
+      "kind": "phoenix_pickle",
+      "rows_seen": 7092,
+      "new_keys": 14184
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/SOKE_DATA/Phoenix_2014T/phoenix14t.dev",
+      "kind": "phoenix_pickle",
+      "rows_seen": 519,
+      "new_keys": 1038
+    },
+    {
+      "path": "/home/cem/tez/exp/DATA/SOKE_DATA/Phoenix_2014T/phoenix14t.test",
+      "kind": "phoenix_pickle",
+      "rows_seen": 642,
+      "new_keys": 1284
+    },
+    {
+      "path": "/home/cem/tez/exp/artifacts/47_soke20_colab_results_analysis/colab_copy/motion_codes/train_soke_motion_codes.jsonl",
+      "kind": "legacy_soke_code_jsonl_text",
+      "rows_seen": 24432,
+      "new_keys": 0
+    },
+    {
+      "path": "/home/cem/tez/exp/artifacts/47_soke20_colab_results_analysis/colab_copy/motion_codes/val_soke_motion_codes.jsonl",
+      "kind": "legacy_soke_code_jsonl_text",
+      "rows_seen": 1426,
+      "new_keys": 0
+    },
+    {
+      "path": "/home/cem/tez/exp/artifacts/47_soke20_colab_results_analysis/colab_copy/motion_codes/test_soke_motion_codes.jsonl",
+      "kind": "legacy_soke_code_jsonl_text",
+      "rows_seen": 1415,
+      "new_keys": 0
+    }
+  ],
+  "summary": [
+    {
+      "split": "train",
+      "manifest_rows": 39424,
+      "rows_seen_this_run": 39424,
+      "rows_written_this_run": 39424,
+      "missing_text_this_run": 0,
+      "failed_this_run": 0,
+      "output_jsonl": "/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/train_soke_motion_codes.jsonl",
+      "skipped_jsonl": "/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/train_skipped_rows.jsonl"
+    },
+    {
+      "split": "val",
+      "manifest_rows": 2326,
+      "rows_seen_this_run": 2326,
+      "rows_written_this_run": 2326,
+      "missing_text_this_run": 0,
+      "failed_this_run": 0,
+      "output_jsonl": "/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/val_soke_motion_codes.jsonl",
+      "skipped_jsonl": "/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/val_skipped_rows.jsonl"
+    },
+    {
+      "split": "test",
+      "manifest_rows": 2880,
+      "rows_seen_this_run": 2880,
+      "rows_written_this_run": 2880,
+      "missing_text_this_run": 0,
+      "failed_this_run": 0,
+      "output_jsonl": "/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/test_soke_motion_codes.jsonl",
+      "skipped_jsonl": "/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/test_skipped_rows.jsonl"
+    }
+  ]
+}

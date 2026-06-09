@@ -1,0 +1,10 @@
+split,dataset,source_alias,manifest_ok_rows,jsonl_rows,delta_jsonl_minus_manifest,missing_text_rows_in_split,bad_code_len_rows_in_split,bad_triplet_length_rows_in_split
+train,CSL-Daily-Fittings,csl,12018,12018,0,0,0,0
+train,Neural-Sign-Actors,how2sign,22054,22054,0,0,0,0
+train,PHOENIX,phoenix,5352,5352,0,0,0,0
+val,CSL-Daily-Fittings,csl,748,748,0,0,0,0
+val,Neural-Sign-Actors,how2sign,1210,1210,0,0,0,0
+val,PHOENIX,phoenix,368,368,0,0,0,0
+test,CSL-Daily-Fittings,csl,837,837,0,0,0,0
+test,Neural-Sign-Actors,how2sign,1620,1620,0,0,0,0
+test,PHOENIX,phoenix,423,423,0,0,0,0

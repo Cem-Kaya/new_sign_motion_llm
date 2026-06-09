@@ -1,0 +1,4 @@
+split,manifest_rows,rows_seen_this_run,rows_written_this_run,missing_text_this_run,failed_this_run,output_jsonl,skipped_jsonl
+train,39424,39424,39424,0,0,/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/train_soke_motion_codes.jsonl,/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/train_skipped_rows.jsonl
+val,2326,2326,2326,0,0,/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/val_soke_motion_codes.jsonl,/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/val_skipped_rows.jsonl
+test,2880,2880,2880,0,0,/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/test_soke_motion_codes.jsonl,/home/cem/tez/exp/new_data/04_soke_gemma3_270m_lora_lm/outputs/soke_motion_codes/test_skipped_rows.jsonl
