@@ -560,6 +560,83 @@ def summarize(rows_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return summary_df, compact_df
 
 
+def make_body_hand_stream_table(compact_df: pd.DataFrame) -> pd.DataFrame:
+    """Readable long-form dataset table with one row per body/hand stream."""
+    t2m = compact_df[compact_df["Track"] == "Text-to-Motion"].copy()
+    if t2m.empty:
+        return pd.DataFrame()
+    rows: list[dict[str, Any]] = []
+    for dataset, group in t2m.groupby("Dataset", dropna=False):
+        combined = group[group["Stream"] == "combined_stream_avg"]
+        if not combined.empty:
+            crow = combined.iloc[0]
+            motion_values = {
+                "Full MPJPE mm lower better": crow.get("MPJPE mm lower better", float("nan")),
+                "Full PA-MPJPE mm lower better": crow.get("PA-MPJPE mm lower better", float("nan")),
+                "Full DTW-MPJPE mm lower better": crow.get("DTW-MPJPE mm lower better", float("nan")),
+                "Full length ratio closer to 1": crow.get("Length ratio closer to 1", float("nan")),
+            }
+        else:
+            motion_values = {
+                "Full MPJPE mm lower better": float("nan"),
+                "Full PA-MPJPE mm lower better": float("nan"),
+                "Full DTW-MPJPE mm lower better": float("nan"),
+                "Full length ratio closer to 1": float("nan"),
+            }
+        for stream, label in [
+            ("body", "Body"),
+            ("lhand", "LHand"),
+            ("rhand", "RHand"),
+            ("combined_stream_avg", "StreamAvg"),
+        ]:
+            match = group[group["Stream"] == stream]
+            if match.empty:
+                continue
+            row = match.iloc[0]
+            rec: dict[str, Any] = {
+                "Dataset": dataset,
+                "Stream": label,
+                "Examples": int(row.get("Examples", 0)),
+                **{f"BLEU-{order} higher better": row.get(f"BLEU-{order} higher better", float("nan")) for order in range(1, 5)},
+                "ROUGE-L higher better": row.get("ROUGE-L higher better", float("nan")),
+                **motion_values,
+            }
+            rows.append(rec)
+    return pd.DataFrame(rows).sort_values(["Dataset", "Stream"]).reset_index(drop=True)
+
+
+def make_body_hand_task_table(summary_df: pd.DataFrame) -> pd.DataFrame:
+    """Keep each T2M instruction task while separating body/hand stream scores."""
+    t2m = summary_df[summary_df["eval_track"] == "Text-to-Motion"].copy()
+    if t2m.empty:
+        return pd.DataFrame()
+    rows: list[dict[str, Any]] = []
+    for _, src in t2m.sort_values(["dataset", "task_group", "task_name"]).iterrows():
+        rec: dict[str, Any] = {
+            "Task group": src.get("task_group", ""),
+            "Task": src.get("task_name", ""),
+            "Dataset": src.get("dataset", ""),
+            "Examples": int(src.get("examples", 0)),
+            "Full MPJPE mm lower better": src.get("mpjpe_mm_lower_better", float("nan")),
+            "Full PA-MPJPE mm lower better": src.get("pa_mpjpe_mm_lower_better", float("nan")),
+            "Full DTW-MPJPE mm lower better": src.get("dtw_mpjpe_mm_lower_better", float("nan")),
+            "Full length ratio closer to 1": src.get("length_ratio_closer_to_1", float("nan")),
+        }
+        for stream, label in [
+            ("body", "Body"),
+            ("lhand", "LHand"),
+            ("rhand", "RHand"),
+            ("combined_stream_avg", "StreamAvg"),
+        ]:
+            for order in range(1, 5):
+                rec[f"{label} BLEU-{order} higher better"] = src.get(
+                    f"{stream}_bleu_{order}_higher_better", float("nan")
+                )
+            rec[f"{label} ROUGE-L higher better"] = src.get(f"{stream}_rouge_l_higher_better", float("nan"))
+        rows.append(rec)
+    return pd.DataFrame(rows).reset_index(drop=True)
+
+
 def write_table_png(table_df: pd.DataFrame, path: Path, title: str) -> None:
     if table_df.empty:
         return
@@ -680,6 +757,10 @@ def main() -> None:
     summary_csv = out_dir / "autoreg_validation_summary_by_task_dataset.csv"
     table_csv = out_dir / "autoreg_validation_compact_table.csv"
     table_png = out_dir / "autoreg_validation_compact_table.png"
+    body_hand_stream_csv = out_dir / "autoreg_validation_body_hand_stream_metrics.csv"
+    body_hand_stream_png = out_dir / "autoreg_validation_body_hand_stream_metrics.png"
+    body_hand_task_csv = out_dir / "autoreg_validation_body_hand_metrics_by_task_dataset.csv"
+    body_hand_task_png = out_dir / "autoreg_validation_body_hand_metrics_by_task_dataset.png"
     summary_json = out_dir / "autoreg_validation_summary.json"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -816,9 +897,23 @@ def main() -> None:
     rows_df = pd.DataFrame(rows_out)
     rows_df.to_csv(details_csv, index=False)
     summary_df, compact_df = summarize(rows_df)
+    body_hand_stream_df = make_body_hand_stream_table(compact_df)
+    body_hand_task_df = make_body_hand_task_table(summary_df)
     summary_df.to_csv(summary_csv, index=False)
     compact_df.to_csv(table_csv, index=False)
+    body_hand_stream_df.to_csv(body_hand_stream_csv, index=False)
+    body_hand_task_df.to_csv(body_hand_task_csv, index=False)
     write_table_png(compact_df, table_png, "Gemma SOKE Autoregressive Validation Table")
+    write_table_png(
+        body_hand_stream_df,
+        body_hand_stream_png,
+        "Gemma SOKE Body/Hand Stream Metrics And Full Motion Metrics",
+    )
+    write_table_png(
+        body_hand_task_df,
+        body_hand_task_png,
+        "Gemma SOKE Body/Hand Code Metrics And Full Motion Metrics By Task",
+    )
     payload = {
         "time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "code_root": str(args.code_root),
@@ -836,6 +931,10 @@ def main() -> None:
         "summary_csv": str(summary_csv),
         "compact_table_csv": str(table_csv),
         "compact_table_png": str(table_png),
+        "body_hand_stream_csv": str(body_hand_stream_csv),
+        "body_hand_stream_png": str(body_hand_stream_png),
+        "body_hand_task_csv": str(body_hand_task_csv),
+        "body_hand_task_png": str(body_hand_task_png),
         "examples": int(len(rows_df)),
     }
     summary_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -843,6 +942,10 @@ def main() -> None:
     print("Wrote:", summary_csv)
     print("Wrote:", table_csv)
     print("Wrote:", table_png)
+    print("Wrote:", body_hand_stream_csv)
+    print("Wrote:", body_hand_stream_png)
+    print("Wrote:", body_hand_task_csv)
+    print("Wrote:", body_hand_task_png)
     print("Wrote:", summary_json)
     if not compact_df.empty:
         print(compact_df.to_string(index=False))

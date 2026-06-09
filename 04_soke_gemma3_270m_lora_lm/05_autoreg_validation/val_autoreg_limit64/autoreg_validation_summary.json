@@ -35,5 +35,9 @@
   "summary_csv": "new_data/04_soke_gemma3_270m_lora_lm/05_autoreg_validation/val_autoreg_limit64/autoreg_validation_summary_by_task_dataset.csv",
   "compact_table_csv": "new_data/04_soke_gemma3_270m_lora_lm/05_autoreg_validation/val_autoreg_limit64/autoreg_validation_compact_table.csv",
   "compact_table_png": "new_data/04_soke_gemma3_270m_lora_lm/05_autoreg_validation/val_autoreg_limit64/autoreg_validation_compact_table.png",
-  "examples": 768
+  "examples": 768,
+  "body_hand_task_csv": "04_soke_gemma3_270m_lora_lm/05_autoreg_validation/val_autoreg_limit64/autoreg_validation_body_hand_metrics_by_task_dataset.csv",
+  "body_hand_task_png": "04_soke_gemma3_270m_lora_lm/05_autoreg_validation/val_autoreg_limit64/autoreg_validation_body_hand_metrics_by_task_dataset.png",
+  "body_hand_stream_csv": "04_soke_gemma3_270m_lora_lm/05_autoreg_validation/val_autoreg_limit64/autoreg_validation_body_hand_stream_metrics.csv",
+  "body_hand_stream_png": "04_soke_gemma3_270m_lora_lm/05_autoreg_validation/val_autoreg_limit64/autoreg_validation_body_hand_stream_metrics.png"
 }
