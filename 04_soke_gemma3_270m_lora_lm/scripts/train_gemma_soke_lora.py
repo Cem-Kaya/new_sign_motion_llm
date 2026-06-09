@@ -244,6 +244,47 @@ def check_torchao_compatibility() -> dict[str, Any]:
     return {"torchao_version": torchao_version, "torchao_status": "ok"}
 
 
+def configure_sdpa_kernel(args: argparse.Namespace, device: torch.device) -> dict[str, Any]:
+    requested = str(getattr(args, "sdpa_kernel", "auto"))
+    status: dict[str, Any] = {
+        "sdpa_kernel": requested,
+        "flash_sdp_enabled": None,
+        "mem_efficient_sdp_enabled": None,
+        "math_sdp_enabled": None,
+    }
+    if requested == "auto":
+        pass
+    elif device.type != "cuda":
+        raise RuntimeError(f"--sdpa-kernel {requested!r} requires CUDA")
+    elif not hasattr(torch.backends, "cuda") or not hasattr(torch.backends.cuda, "enable_flash_sdp"):
+        raise RuntimeError("This PyTorch build does not expose CUDA SDPA backend controls")
+    elif requested == "flash":
+        torch.backends.cuda.enable_flash_sdp(True)
+        torch.backends.cuda.enable_mem_efficient_sdp(False)
+        torch.backends.cuda.enable_math_sdp(False)
+    elif requested == "mem_efficient":
+        torch.backends.cuda.enable_flash_sdp(False)
+        torch.backends.cuda.enable_mem_efficient_sdp(True)
+        torch.backends.cuda.enable_math_sdp(False)
+    elif requested == "math":
+        torch.backends.cuda.enable_flash_sdp(False)
+        torch.backends.cuda.enable_mem_efficient_sdp(False)
+        torch.backends.cuda.enable_math_sdp(True)
+    else:
+        raise ValueError(f"Unknown --sdpa-kernel: {requested}")
+
+    if hasattr(torch.backends, "cuda"):
+        for key, fn_name in [
+            ("flash_sdp_enabled", "flash_sdp_enabled"),
+            ("mem_efficient_sdp_enabled", "mem_efficient_sdp_enabled"),
+            ("math_sdp_enabled", "math_sdp_enabled"),
+        ]:
+            fn = getattr(torch.backends.cuda, fn_name, None)
+            if callable(fn):
+                status[key] = bool(fn())
+    return status
+
+
 def motion_only_text(text: str) -> str:
     prefixes = ("<motion_id_", "<hand_id_", "<rhand_id_")
     return " ".join(tok for tok in str(text).split() if tok.startswith(prefixes))
@@ -482,6 +523,7 @@ def build_tokenizer_and_model(args: argparse.Namespace, codecs: Any) -> tuple[An
         "init_adapter": str(init_adapter) if init_adapter is not None else "",
         "gradient_checkpointing": bool(args.gradient_checkpointing),
         "attn_implementation": str(args.attn_implementation),
+        "sdpa_kernel": str(args.sdpa_kernel),
         **dep_meta,
     }
     return tokenizer, model, meta
@@ -596,6 +638,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-seq-len", type=int, default=1024)
     parser.add_argument("--gradient-checkpointing", type=int, default=1)
     parser.add_argument("--attn-implementation", default="sdpa")
+    parser.add_argument("--sdpa-kernel", choices=["auto", "flash", "mem_efficient", "math"], default="auto")
     parser.add_argument("--max-train-logical-rows", type=int, default=0)
     parser.add_argument("--max-val-logical-rows", type=int, default=2048)
     parser.add_argument("--eval-max-batches", type=int, default=0)
@@ -614,6 +657,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-motion-token-embeddings", type=int, default=1)
     parser.add_argument("--random-drop", type=int, default=1)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--log-every-steps", type=int, default=25)
     parser.add_argument("--save-every-epochs", type=int, default=1)
     parser.add_argument("--keep-local-epoch-saves", type=int, default=5)
     parser.add_argument("--sync-to-drive", type=int, default=0)
@@ -635,6 +679,7 @@ def main() -> None:
         args.init_adapter = Path(resume_info["adapter"])
     (args.run_root / "train_args.json").write_text(json.dumps(vars(args), indent=2, default=str), encoding="utf-8")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    sdpa_status = configure_sdpa_kernel(args, device)
     preflight = {
         "device": str(device),
         "cuda_available": bool(torch.cuda.is_available()),
@@ -648,6 +693,7 @@ def main() -> None:
         "max_seq_len": int(args.max_seq_len),
         "gradient_checkpointing": bool(args.gradient_checkpointing),
         "attn_implementation": str(args.attn_implementation),
+        **sdpa_status,
         "resume_training": bool(args.resume_training),
         "resume_found": bool(resume_info is not None),
         "resume_epoch": int(resume_info["epoch"]) if resume_info is not None else 0,
@@ -805,7 +851,7 @@ def main() -> None:
                     optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
                 global_step += 1
-                if global_step == 1 or global_step % 25 == 0:
+                if global_step == 1 or (int(args.log_every_steps) > 0 and global_step % int(args.log_every_steps) == 0):
                     write_event(
                         "optimizer_step",
                         {
