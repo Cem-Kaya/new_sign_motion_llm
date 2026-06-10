@@ -244,6 +244,43 @@ def check_torchao_compatibility() -> dict[str, Any]:
     return {"torchao_version": torchao_version, "torchao_status": "ok"}
 
 
+def retarget_cosine_scheduler_on_resume(
+    scheduler: torch.optim.lr_scheduler.CosineAnnealingLR,
+    optimizer: torch.optim.Optimizer,
+    *,
+    completed_epoch: int,
+    target_epochs: int,
+    eta_min: float,
+) -> dict[str, Any]:
+    old_t_max = int(getattr(scheduler, "T_max", target_epochs))
+    target_epochs = max(1, int(target_epochs))
+    completed_epoch = max(0, int(completed_epoch))
+    meta: dict[str, Any] = {
+        "scheduler_retargeted": False,
+        "old_t_max": old_t_max,
+        "new_t_max": target_epochs,
+        "completed_epoch": completed_epoch,
+    }
+    if old_t_max == target_epochs or completed_epoch >= target_epochs:
+        return meta
+
+    base_lrs = [float(x) for x in getattr(scheduler, "base_lrs", [])]
+    if len(base_lrs) != len(optimizer.param_groups):
+        base_lrs = [float(group.get("initial_lr", group["lr"])) for group in optimizer.param_groups]
+
+    scheduler.T_max = target_epochs
+    scheduler.eta_min = float(eta_min)
+    scheduler.last_epoch = completed_epoch
+    resumed_lrs: list[float] = []
+    for group, base_lr in zip(optimizer.param_groups, base_lrs):
+        lr = float(eta_min) + (base_lr - float(eta_min)) * (1.0 + math.cos(math.pi * completed_epoch / target_epochs)) / 2.0
+        group["lr"] = lr
+        resumed_lrs.append(lr)
+    scheduler._last_lr = resumed_lrs
+    meta.update({"scheduler_retargeted": True, "resumed_lrs": resumed_lrs})
+    return meta
+
+
 def flash_attention_2_probe(device: torch.device) -> dict[str, Any]:
     status: dict[str, Any] = {
         "flash_attn_2_available": False,
@@ -880,12 +917,21 @@ def main() -> None:
                 best_epoch = int(old_row.get("epoch", 0))
     global_step = 0
     start_epoch = 1
+    scheduler_resume_meta: dict[str, Any] = {}
     if resume_info is not None:
         state = resume_info["state"]
         optimizer.load_state_dict(state["optimizer"])
         scheduler.load_state_dict(state["scheduler"])
         global_step = int(state.get("global_step", resume_info["global_step"]))
-        start_epoch = int(state.get("epoch", resume_info["epoch"])) + 1
+        completed_epoch = int(state.get("epoch", resume_info["epoch"]))
+        start_epoch = completed_epoch + 1
+        scheduler_resume_meta = retarget_cosine_scheduler_on_resume(
+            scheduler,
+            optimizer,
+            completed_epoch=completed_epoch,
+            target_epochs=int(args.epochs),
+            eta_min=float(args.eta_min),
+        )
     event_path = args.run_root / "training_events.jsonl"
 
     def write_event(kind: str, payload: dict[str, Any]) -> None:
@@ -908,6 +954,7 @@ def main() -> None:
                 "history_rows_loaded": int(len(history)),
                 "best_epoch": int(best_epoch) if best_epoch is not None else None,
                 "best_loss": float(best_loss),
+                "scheduler_resume": scheduler_resume_meta,
                 "train_logical_rows": len(train_ds),
                 "val_logical_rows": len(val_ds),
                 "tasks": len(tasks),
